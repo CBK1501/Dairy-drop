@@ -105,7 +105,10 @@ export async function upsertDelivery(
   const col = mongoose.connection.collection("deliveries");
   await col.updateOne(
     { userId, customerId, date },
-    { $set: { morningLitres: morningLitres ?? null, eveningLitres: eveningLitres ?? null } },
+    {
+      $set: { morningLitres: morningLitres ?? null, eveningLitres: eveningLitres ?? null },
+      $setOnInsert: { createdAt: new Date() },
+    },
     { upsert: true }
   );
   const doc = await col.findOne({ userId, customerId, date }) as any;

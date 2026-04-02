@@ -23,10 +23,14 @@ export async function summarizeDeliveries(req: Request, res: Response) {
 export async function createDelivery(req: Request, res: Response) {
   const parsed = DeliverySchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.errors[0].message }); return; }
-  const userId = req.user!._id.toString();
-  const customerId = String(req.params.customerId);
-  const doc = await upsertDelivery(userId, customerId, parsed.data.date, parsed.data.morningLitres, parsed.data.eveningLitres);
-  res.status(201).json(doc);
+  try {
+    const userId = req.user!._id.toString();
+    const customerId = String(req.params.customerId);
+    const doc = await upsertDelivery(userId, customerId, parsed.data.date, parsed.data.morningLitres, parsed.data.eveningLitres);
+    res.status(201).json(doc);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
 }
 
 export async function editDelivery(req: Request, res: Response) {
