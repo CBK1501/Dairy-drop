@@ -8,9 +8,9 @@ export interface LoginResponse {
 
 export const authService = {
   login: (username: string, password: string) =>
-    http.post<LoginResponse>("/api/auth/login", { username, password }),
+    http.post<LoginResponse>("https://dairy-drop-be.onrender.com/api/auth/login", { username, password }),
 
-  logout: () => http.post<void>("/api/auth/logout", {}),
+  logout: () => http.post<void>("https://dairy-drop-be.onrender.com/api/auth/logout", {}),
 
-  getMe: () => http.get<AuthUser>("/api/auth/me"),
+  getMe: () => http.get<AuthUser>("https://dairy-drop-be.onrender.com/api/auth/me"),
 };

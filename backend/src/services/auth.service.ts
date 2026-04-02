@@ -1,10 +1,10 @@
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
-import { User } from "../models/User.js";
+import { User, IUser } from "../models/User.js";
 import { Session } from "../models/Session.js";
 import { UserPayload } from "../types/index.js";
 
-export function formatUser(u: InstanceType<typeof User>): UserPayload {
+export function formatUser(u: IUser): UserPayload {
   return {
     id: u._id.toString(),
     username: u.username,

@@ -18,11 +18,11 @@ export const customerService = {
   getAll: () => http.get<{ customers: Customer[] }>("/api/customers"),
 
   create: (data: CreateCustomerInput) =>
-    http.post<Customer>("/api/customers", data),
+    http.post<Customer>("https://dairy-drop-be.onrender.com/api/customers", data),
 
   update: (id: string, data: UpdateCustomerInput) =>
-    http.put<Customer>(`/api/customers/${id}`, data),
+    http.put<Customer>(`https://dairy-drop-be.onrender.com/api/customers/${id}`, data),
 
   remove: (id: string) =>
-    http.delete<{ success: boolean }>(`/api/customers/${id}`),
+    http.delete<{ success: boolean }>(`https://dairy-drop-be.onrender.com/api/customers/${id}`),
 };

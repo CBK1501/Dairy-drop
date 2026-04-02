@@ -12,7 +12,7 @@ export interface CreateDeliveryInput {
   eveningLitres: number | null;
 }
 
-const base = (customerId: string) => `/api/customers/${customerId}/deliveries`;
+const base = (customerId: string) => `https://dairy-drop-be.onrender.com/api/customers/${customerId}/deliveries`;
 
 export const deliveryService = {
   getAll: (customerId: string, month?: string) =>

@@ -26,17 +26,17 @@ export interface UpdateProfileInput {
 }
 
 export const userService = {
-  getAll: () => http.get<UserListResponse>("/api/admin/users"),
+  getAll: () => http.get<UserListResponse>("https://dairy-drop-be.onrender.com/api/admin/users"),
 
   create: (data: CreateUserInput) =>
-    http.post<AuthUser>("/api/admin/users", data),
+    http.post<AuthUser>("https://dairy-drop-be.onrender.com/api/admin/users", data),
 
   update: (id: string, data: UpdateUserInput) =>
-    http.put<AuthUser>(`/api/admin/users/${id}`, data),
+    http.put<AuthUser>(`https://dairy-drop-be.onrender.com/api/admin/users/${id}`, data),
 
   remove: (id: string) =>
-    http.delete<{ success: boolean }>(`/api/admin/users/${id}`),
+    http.delete<{ success: boolean }>(`https://dairy-drop-be.onrender.com/api/admin/users/${id}`),
 
   updateProfile: (data: UpdateProfileInput) =>
-    http.put<AuthUser>("/api/users/me", data),
+    http.put<AuthUser>("https://dairy-drop-be.onrender.com/api/users/me", data),
 };
