@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Home, Users, History, PlusCircle, Settings, Droplets, Shield, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ const navItems = [
 ];
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
+  const location = useLocation().pathname;
   const { user, logout } = useAuth();
   const isAdmin = user?.role === "admin";
   const allNavItems = isAdmin
@@ -39,7 +39,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           {allNavItems.map((item) => {
             const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
             return (
-              <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all", isActive ? "bg-primary text-white shadow-md" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}>
+              <Link key={item.href} to={item.href} className={cn("flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all", isActive ? "bg-primary text-white shadow-md" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}>
                 <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                 {item.label}
               </Link>
@@ -95,7 +95,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           {allNavItems.map((item) => {
             const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
             return (
-              <Link key={item.href} href={item.href} className="flex flex-col items-center py-1 px-2 min-w-[48px]">
+              <Link key={item.href} to={item.href} className="flex flex-col items-center py-1 px-2 min-w-[48px]">
                 <div className={cn("flex items-center justify-center w-10 h-10 rounded-2xl transition-all", isActive ? "bg-primary text-white shadow-lg -translate-y-1" : "text-muted-foreground")}>
                   <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                 </div>

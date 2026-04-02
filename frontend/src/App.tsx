@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/store/auth.store";
 import { Toaster } from "@/components/ui/Toaster";
@@ -37,20 +37,16 @@ function Router() {
 
   return (
     <Layout>
-      <Switch>
-        <Route path="/" component={isAdmin ? AdminDashboard : UserDashboard} />
-        {!isAdmin && <Route path="/customers" component={Customers} />}
-        {!isAdmin && <Route path="/customers/:id" component={CustomerDetail} />}
-        {!isAdmin && <Route path="/entry" component={AddEntry} />}
-        {!isAdmin && <Route path="/history" component={HistoryPage} />}
-        <Route path="/settings" component={Settings} />
-        {isAdmin && <Route path="/admin" component={Admin} />}
-        <Route>
-          <div className="text-center py-20">
-            <h2 className="font-bold text-2xl text-foreground">404 — Page Not Found</h2>
-          </div>
-        </Route>
-      </Switch>
+      <Routes>
+        <Route path="/" element={isAdmin ? <AdminDashboard /> : <UserDashboard />} />
+        {!isAdmin && <Route path="/customers" element={<Customers />} />}
+        {!isAdmin && <Route path="/customers/:id" element={<CustomerDetail />} />}
+        {!isAdmin && <Route path="/entry" element={<AddEntry />} />}
+        {!isAdmin && <Route path="/history" element={<HistoryPage />} />}
+        <Route path="/settings" element={<Settings />} />
+        {isAdmin && <Route path="/admin" element={<Admin />} />}
+        <Route path="*" element={<div className="text-center py-20"><h2 className="font-bold text-2xl text-foreground">404 — Page Not Found</h2></div>} />
+      </Routes>
     </Layout>
   );
 }
@@ -59,8 +55,10 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router />
-        <Toaster />
+        <HashRouter>
+          <Router />
+          <Toaster />
+        </HashRouter>
       </AuthProvider>
     </QueryClientProvider>
   );
