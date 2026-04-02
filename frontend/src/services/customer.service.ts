@@ -15,7 +15,7 @@ export interface UpdateCustomerInput {
 }
 
 export const customerService = {
-  getAll: () => http.get<{ customers: Customer[] }>("/api/customers"),
+  getAll: () => http.get<{ customers: Customer[] }>("https://dairy-drop-be.onrender.com/api/customers"),
 
   create: (data: CreateCustomerInput) =>
     http.post<Customer>("https://dairy-drop-be.onrender.com/api/customers", data),
