@@ -16,6 +16,13 @@ export interface UpdateUserInput {
   password?: string | null;
   role: "admin" | "user";
   isActive: boolean;
+  name?: string;
+  phone?: string;
+}
+
+export interface UpdateProfileInput {
+  name: string;
+  phone: string;
 }
 
 export const userService = {
@@ -29,4 +36,7 @@ export const userService = {
 
   remove: (id: string) =>
     http.delete<{ success: boolean }>(`/api/admin/users/${id}`),
+
+  updateProfile: (data: UpdateProfileInput) =>
+    http.put<AuthUser>("/api/users/me", data),
 };

@@ -1,6 +1,8 @@
-import mongoose, { Schema, Document } from "mongoose";
+import { Schema, Document, model } from "mongoose";
 
 export interface IDelivery extends Document {
+  userId: string;
+  customerId: string;
   date: string;
   morningLitres: number | null;
   eveningLitres: number | null;
@@ -9,11 +11,15 @@ export interface IDelivery extends Document {
 
 const DeliverySchema = new Schema<IDelivery>(
   {
-    date: { type: String, required: true, unique: true },
+    userId: { type: String, required: true },
+    customerId: { type: String, required: true },
+    date: { type: String, required: true },
     morningLitres: { type: Number, default: null },
     eveningLitres: { type: Number, default: null },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
-export const Delivery = mongoose.model<IDelivery>("Delivery", DeliverySchema);
+DeliverySchema.index({ userId: 1, customerId: 1, date: 1 }, { unique: true });
+
+export const Delivery = model<IDelivery>("Delivery", DeliverySchema);

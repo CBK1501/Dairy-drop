@@ -12,3 +12,7 @@ export function formatCurrency(amount: number): string {
     maximumFractionDigits: 0,
   }).format(amount);
 }
+
+export function formatLitres(n: number): string {
+  return parseFloat(n.toFixed(2)).toString();
+}

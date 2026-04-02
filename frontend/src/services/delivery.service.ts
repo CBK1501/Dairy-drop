@@ -12,19 +12,21 @@ export interface CreateDeliveryInput {
   eveningLitres: number | null;
 }
 
+const base = (customerId: string) => `/api/customers/${customerId}/deliveries`;
+
 export const deliveryService = {
-  getAll: (month?: string) =>
-    http.get<DeliveryListResponse>(`/api/deliveries${month ? `?month=${month}` : ""}`),
+  getAll: (customerId: string, month?: string) =>
+    http.get<DeliveryListResponse>(`${base(customerId)}${month ? `?month=${month}` : ""}`),
 
-  getSummary: (month?: string) =>
-    http.get<DeliverySummary>(`/api/deliveries/summary${month ? `?month=${month}` : ""}`),
+  getSummary: (customerId: string, month?: string) =>
+    http.get<DeliverySummary>(`${base(customerId)}/summary${month ? `?month=${month}` : ""}`),
 
-  create: (data: CreateDeliveryInput) =>
-    http.post<Delivery>("/api/deliveries", data),
+  create: (customerId: string, data: CreateDeliveryInput) =>
+    http.post<Delivery>(base(customerId), data),
 
-  update: (id: string, data: CreateDeliveryInput) =>
-    http.put<Delivery>(`/api/deliveries/${id}`, data),
+  update: (customerId: string, id: string, data: CreateDeliveryInput) =>
+    http.put<Delivery>(`${base(customerId)}/${id}`, data),
 
-  remove: (id: string) =>
-    http.delete<{ success: boolean }>(`/api/deliveries/${id}`),
+  remove: (customerId: string, id: string) =>
+    http.delete<{ success: boolean }>(`${base(customerId)}/${id}`),
 };

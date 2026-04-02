@@ -1,112 +1,252 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { customerService } from "@/services/customer.service";
 import { deliveryService } from "@/services/delivery.service";
-import { useLocation } from "wouter";
+import { Customer, Delivery } from "@/types";
 import { format } from "date-fns";
-import { Calendar, Sun, Moon, Droplets } from "lucide-react";
+import { Sun, Moon, Droplets, Save, Info, ChevronDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
+function Toggle({ checked, onChange, color }: { checked: boolean; onChange: (v: boolean) => void; color: "amber" | "indigo" }) {
+  const on = color === "amber" ? "bg-amber-500" : "bg-indigo-500";
+  return (
+    <button type="button" onClick={() => onChange(!checked)}
+      className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none", checked ? on : "bg-border")}>
+      <span className={cn("inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform", checked ? "translate-x-6" : "translate-x-1")} />
+    </button>
+  );
+}
+
 export default function AddEntry() {
-  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+
+  const [customerId, setCustomerId] = useState("");
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [hasMorning, setHasMorning] = useState(true);
-  const [morningLitres, setMorningLitres] = useState("1.5");
+  const [hasMorning, setHasMorning] = useState(false);
+  const [morningLitres, setMorningLitres] = useState("");
   const [hasEvening, setHasEvening] = useState(false);
   const [eveningLitres, setEveningLitres] = useState("");
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: deliveryService.create,
-    onSuccess: () => {
-      toast({ title: "Success!", description: "Delivery recorded successfully." });
-      queryClient.invalidateQueries({ queryKey: ["deliveries"] });
-      queryClient.invalidateQueries({ queryKey: ["summary"] });
-      setLocation("/history");
-    },
-    onError: (e: Error) => toast({ title: "Failed to save", description: e.message, variant: "destructive" }),
+  const { data } = useQuery<{ customers: Customer[] }>({
+    queryKey: ["customers"],
+    queryFn: () => customerService.getAll(),
   });
+
+  const customers = data?.customers?.filter(c => c.isActive) ?? [];
+  const selectedCustomer = customers.find(c => c.id === customerId);
+
+  // Fetch existing entries for selected customer + month
+  const month = date.slice(0, 7);
+  const { data: existingData } = useQuery<{ deliveries: Delivery[]; total: number }>({
+    queryKey: ["deliveries", customerId, month],
+    queryFn: () => deliveryService.getAll(customerId, month),
+    enabled: !!customerId,
+  });
+  const existingEntry = existingData?.deliveries?.find(d => d.date === date);
+
+  // Auto-fill form when existing entry is found for selected date
+  useEffect(() => {
+    if (existingEntry) {
+      setHasMorning(existingEntry.morningLitres != null);
+      setMorningLitres(existingEntry.morningLitres != null ? String(existingEntry.morningLitres) : "");
+      setHasEvening(existingEntry.eveningLitres != null);
+      setEveningLitres(existingEntry.eveningLitres != null ? String(existingEntry.eveningLitres) : "");
+    } else {
+      // No entry — reset to blank
+      setHasMorning(false);
+      setMorningLitres("");
+      setHasEvening(false);
+      setEveningLitres("");
+    }
+  }, [existingEntry, date, customerId]);
+
+  const payload = {
+    date,
+    morningLitres: hasMorning ? parseFloat(morningLitres) || 0 : null,
+    eveningLitres: hasEvening ? parseFloat(eveningLitres) || 0 : null,
+  };
+
+  // Create new entry
+  const { mutate: createEntry, isPending: isCreating } = useMutation({
+    mutationFn: () => deliveryService.create(customerId, payload),
+    onSuccess: () => {
+      toast({ title: "Entry saved!", description: `${selectedCustomer?.name} — ${format(new Date(date + "T00:00:00"), "dd MMM yyyy")}` });
+      queryClient.invalidateQueries({ queryKey: ["deliveries", customerId] });
+      queryClient.invalidateQueries({ queryKey: ["summary", customerId] });
+    },
+    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
+  });
+
+  // Update existing entry
+  const { mutate: updateEntry, isPending: isUpdating } = useMutation({
+    mutationFn: () => deliveryService.update(customerId, existingEntry!.id, payload),
+    onSuccess: () => {
+      toast({ title: "Entry updated!", description: `${selectedCustomer?.name} — ${format(new Date(date + "T00:00:00"), "dd MMM yyyy")}` });
+      queryClient.invalidateQueries({ queryKey: ["deliveries", customerId] });
+      queryClient.invalidateQueries({ queryKey: ["summary", customerId] });
+    },
+    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
+  });
+
+  const isPending = isCreating || isUpdating;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hasMorning && !hasEvening) {
-      toast({ title: "Select a session", description: "Please select morning or evening.", variant: "destructive" });
-      return;
-    }
-    mutate({
-      date,
-      morningLitres: hasMorning ? parseFloat(morningLitres) || 0 : null,
-      eveningLitres: hasEvening ? parseFloat(eveningLitres) || 0 : null,
-    });
+    if (!customerId) { toast({ title: "Select a customer", variant: "destructive" }); return; }
+    if (!hasMorning && !hasEvening) { toast({ title: "Enable at least one session", variant: "destructive" }); return; }
+    existingEntry ? updateEntry() : createEntry();
   };
 
+  const totalLitres = (hasMorning ? parseFloat(morningLitres) || 0 : 0) + (hasEvening ? parseFloat(eveningLitres) || 0 : 0);
+
   return (
-    <div className="flex flex-col gap-6 max-w-lg mx-auto">
-      <div className="text-center mb-2">
-        <h2 className="font-display text-2xl font-bold text-foreground">Record Delivery</h2>
-        <p className="text-muted-foreground text-sm mt-1">Add milk received for a specific date</p>
+    <div className="flex flex-col gap-5 max-w-lg mx-auto">
+      <div className="text-center">
+        <h2 className="font-bold text-2xl text-foreground">Add Entry</h2>
+        <p className="text-muted-foreground text-sm mt-1">Record daily milk delivery</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+
+        {/* Customer selector */}
         <div className="bg-card rounded-3xl p-5 border border-border shadow-sm">
-          <label className="text-sm font-bold text-foreground flex items-center gap-2 mb-3">
-            <Calendar size={18} className="text-primary" /> Select Date
-          </label>
-          <input type="date" required value={date} onChange={(e) => setDate(e.target.value)}
-            className="w-full bg-secondary/50 border border-transparent focus:border-primary text-foreground text-lg px-4 py-4 rounded-2xl outline-none transition-all" />
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-3">Select Customer</label>
+          {customers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No active customers. Add customers first.</p>
+          ) : (
+            <div className="relative">
+              <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}
+                className="w-full appearance-none bg-secondary/50 border border-border focus:border-primary text-foreground px-4 py-3 rounded-2xl outline-none text-sm font-medium pr-10">
+                <option value="">-- Select customer --</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name} — {c.phone}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            </div>
+          )}
         </div>
 
-        {/* Morning */}
-        <div className={cn("rounded-3xl p-5 border transition-all", hasMorning ? "bg-amber-50/50 border-amber-200 shadow-sm" : "bg-card border-border")}>
-          <div className="flex items-center justify-between mb-4">
+        {/* Date picker */}
+        <div className="bg-card rounded-3xl p-5 border border-border shadow-sm">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-3">Date</label>
+          <input type="date" required value={date} onChange={(e) => setDate(e.target.value)}
+            className="w-full bg-secondary/50 border border-border focus:border-primary text-foreground px-4 py-3 rounded-2xl outline-none text-sm font-medium" />
+        </div>
+
+        {/* Existing entry info */}
+        {customerId && existingEntry && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4">
+            <div className="flex items-start gap-2">
+              <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-blue-800">Existing entry — {format(new Date(date + "T00:00:00"), "dd MMM yyyy")}</p>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  {existingEntry.morningLitres != null && (
+                    <span className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-lg">
+                      <Sun size={11} /> Morning: {existingEntry.morningLitres} L
+                    </span>
+                  )}
+                  {existingEntry.eveningLitres != null && (
+                    <span className="flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-100 px-2.5 py-1 rounded-lg">
+                      <Moon size={11} /> Evening: {existingEntry.eveningLitres} L
+                    </span>
+                  )}
+                  <span className="text-xs font-bold text-green-700 bg-green-100 px-2.5 py-1 rounded-lg">
+                    Total: {existingEntry.totalLitres} L
+                  </span>
+                </div>
+                <p className="text-xs text-blue-600 mt-1.5">Values pre-filled below. Change what you need and save.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Morning toggle */}
+        <div className={cn("rounded-3xl p-5 border-2 transition-all", hasMorning ? "bg-amber-50/60 border-amber-200" : "bg-card border-border")}>
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-colors", hasMorning ? "bg-amber-500 text-white shadow-md" : "bg-secondary text-muted-foreground")}>
+              <div className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                hasMorning ? "bg-amber-500 text-white shadow-md" : "bg-secondary text-muted-foreground")}>
                 <Sun size={20} />
               </div>
-              <h3 className="font-bold text-lg text-foreground">Morning</h3>
+              <div>
+                <p className="font-bold text-foreground">Morning</p>
+                <p className="text-xs text-muted-foreground">{hasMorning ? "Tap to disable" : "Tap to enable"}</p>
+              </div>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" className="sr-only peer" checked={hasMorning} onChange={(e) => setHasMorning(e.target.checked)} />
-              <div className="w-11 h-6 bg-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-            </label>
+            <Toggle checked={hasMorning} onChange={setHasMorning} color="amber" />
           </div>
-          <div className={cn("transition-all overflow-hidden", hasMorning ? "max-h-24 opacity-100" : "max-h-0 opacity-0")}>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Droplets size={18} className="text-amber-500" /></div>
-              <input type="number" step="0.1" min="0" placeholder="0.0" value={morningLitres} onChange={(e) => setMorningLitres(e.target.value)}
-                className="w-full bg-white border border-amber-200 focus:border-amber-500 text-foreground text-xl font-bold px-12 py-4 rounded-2xl outline-none transition-all" />
-              <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"><span className="text-muted-foreground font-medium">Litres</span></div>
-            </div>
-          </div>
+          <AnimatePresence>
+            {hasMorning && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-4">
+                <div className="relative">
+                  <Droplets size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-500" />
+                  <input type="number" step="any" min="0" value={morningLitres}
+                    onChange={(e) => setMorningLitres(e.target.value)}
+                    className="w-full bg-white border-2 border-amber-200 focus:border-amber-500 text-foreground font-bold pl-10 pr-14 py-4 rounded-2xl outline-none text-2xl"
+                    placeholder="0.0" />
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold text-lg">L</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Evening */}
-        <div className={cn("rounded-3xl p-5 border transition-all", hasEvening ? "bg-indigo-50/50 border-indigo-200 shadow-sm" : "bg-card border-border")}>
-          <div className="flex items-center justify-between mb-4">
+        {/* Evening toggle */}
+        <div className={cn("rounded-3xl p-5 border-2 transition-all", hasEvening ? "bg-indigo-50/60 border-indigo-200" : "bg-card border-border")}>
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-colors", hasEvening ? "bg-indigo-500 text-white shadow-md" : "bg-secondary text-muted-foreground")}>
+              <div className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                hasEvening ? "bg-indigo-500 text-white shadow-md" : "bg-secondary text-muted-foreground")}>
                 <Moon size={20} />
               </div>
-              <h3 className="font-bold text-lg text-foreground">Evening</h3>
+              <div>
+                <p className="font-bold text-foreground">Evening</p>
+                <p className="text-xs text-muted-foreground">{hasEvening ? "Tap to disable" : "Tap to enable"}</p>
+              </div>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" className="sr-only peer" checked={hasEvening} onChange={(e) => setHasEvening(e.target.checked)} />
-              <div className="w-11 h-6 bg-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
-            </label>
+            <Toggle checked={hasEvening} onChange={setHasEvening} color="indigo" />
           </div>
-          <div className={cn("transition-all overflow-hidden", hasEvening ? "max-h-24 opacity-100" : "max-h-0 opacity-0")}>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Droplets size={18} className="text-indigo-500" /></div>
-              <input type="number" step="0.1" min="0" placeholder="0.0" value={eveningLitres} onChange={(e) => setEveningLitres(e.target.value)}
-                className="w-full bg-white border border-indigo-200 focus:border-indigo-500 text-foreground text-xl font-bold px-12 py-4 rounded-2xl outline-none transition-all" />
-              <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"><span className="text-muted-foreground font-medium">Litres</span></div>
-            </div>
-          </div>
+          <AnimatePresence>
+            {hasEvening && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-4">
+                <div className="relative">
+                  <Droplets size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500" />
+                  <input type="number" step="any" min="0" value={eveningLitres}
+                    onChange={(e) => setEveningLitres(e.target.value)}
+                    className="w-full bg-white border-2 border-indigo-200 focus:border-indigo-500 text-foreground font-bold pl-10 pr-14 py-4 rounded-2xl outline-none text-2xl"
+                    placeholder="0.0" />
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold text-lg">L</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        <button type="submit" disabled={isPending || (!hasMorning && !hasEvening)}
-          className="w-full bg-primary hover:bg-primary/90 text-white font-bold text-lg py-5 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-all mt-4">
-          {isPending ? "Saving..." : "Save Delivery"}
+        {/* Live total preview */}
+        {customerId && (hasMorning || hasEvening) && (
+          <div className="bg-secondary/50 rounded-2xl px-5 py-4 flex items-center justify-between border border-border">
+            <div className="flex items-center gap-3">
+              {hasMorning && <span className="flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg"><Sun size={11} />{morningLitres || 0} L</span>}
+              {hasEvening && <span className="flex items-center gap-1 text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg"><Moon size={11} />{eveningLitres || 0} L</span>}
+            </div>
+            <div className="text-right">
+              <p className="font-bold text-foreground">{totalLitres.toFixed(1)} L</p>
+              <p className="text-xs font-semibold text-green-600">Rs. {selectedCustomer ? (totalLitres * selectedCustomer.pricePerLitre).toFixed(2) : "0.00"}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Submit */}
+        <button type="submit" disabled={isPending || !customerId}
+          className="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold py-4 rounded-2xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-base shadow-lg">
+          <Save size={20} />
+          {isPending ? "Saving..." : existingEntry ? "Update Entry" : "Save Entry"}
         </button>
       </form>
     </div>

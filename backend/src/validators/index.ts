@@ -16,6 +16,26 @@ export const UpdateUserSchema = z.object({
   password: z.string().min(6).nullable().optional(),
   role: z.enum(["admin", "user"]),
   isActive: z.boolean(),
+  name: z.string().optional(),
+  phone: z.string().optional(),
+});
+
+export const UpdateProfileSchema = z.object({
+  name: z.string().optional(),
+  phone: z.string().optional(),
+});
+
+export const CustomerSchema = z.object({
+  name: z.string().min(1, "Name is required").trim(),
+  phone: z.string().min(1, "Phone is required").trim(),
+  pricePerLitre: z.number().positive("Price must be greater than 0"),
+});
+
+export const UpdateCustomerSchema = z.object({
+  name: z.string().min(1).trim(),
+  phone: z.string().min(1).trim(),
+  pricePerLitre: z.number().positive(),
+  isActive: z.boolean(),
 });
 
 export const DeliverySchema = z.object({

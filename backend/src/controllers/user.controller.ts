@@ -1,6 +1,25 @@
 import { Request, Response } from "express";
-import { CreateUserSchema, UpdateUserSchema } from "../validators/index.js";
-import { getAllUsers, createUser, updateUser, deleteUser } from "../services/user.service.js";
+import { CreateUserSchema, UpdateUserSchema, UpdateProfileSchema } from "../validators/index.js";
+import { getAllUsers, createUser, updateUser, deleteUser, updateProfile } from "../services/user.service.js";
+import { formatUser } from "../services/auth.service.js";
+
+export async function getMe(req: Request, res: Response) {
+  res.json(formatUser(req.user!));
+}
+
+export async function updateMe(req: Request, res: Response) {
+  const parsed = UpdateProfileSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.errors[0].message });
+    return;
+  }
+  try {
+    const user = await updateProfile(req.user!._id.toString(), parsed.data);
+    res.json(user);
+  } catch (err: any) {
+    res.status(404).json({ error: err.message });
+  }
+}
 
 export async function listUsers(req: Request, res: Response) {
   const users = await getAllUsers();

@@ -10,6 +10,8 @@ export function formatUser(u: InstanceType<typeof User>): UserPayload {
     username: u.username,
     role: u.role,
     isActive: u.isActive,
+    name: u.name ?? "",
+    phone: u.phone ?? "",
     createdAt: (u as any).createdAt?.toISOString?.() ?? new Date().toISOString(),
   };
 }

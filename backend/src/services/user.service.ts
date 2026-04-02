@@ -17,22 +17,40 @@ export async function createUser(
   if (existing) throw new Error("Username already exists");
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await User.create({ username: username.trim(), passwordHash, role });
+  const user = await User.create({ username: username.trim(), password, passwordHash, role });
   return formatUser(user);
 }
 
 export async function updateUser(
   id: string,
-  data: { username: string; password?: string | null; role: "admin" | "user"; isActive: boolean }
+  data: { username: string; password?: string | null; role: "admin" | "user"; isActive: boolean; name?: string; phone?: string }
 ): Promise<UserPayload> {
   const update: Record<string, unknown> = {
     username: data.username.trim(),
     role: data.role,
     isActive: data.isActive,
+    name: data.name ?? "",
+    phone: data.phone ?? "",
   };
-  if (data.password) update.passwordHash = await bcrypt.hash(data.password, 10);
+  if (data.password) {
+    update.password = data.password;
+    update.passwordHash = await bcrypt.hash(data.password, 10);
+  }
 
   const user = await User.findByIdAndUpdate(id, update, { new: true });
+  if (!user) throw new Error("User not found");
+  return formatUser(user);
+}
+
+export async function updateProfile(
+  id: string,
+  data: { name?: string; phone?: string }
+): Promise<UserPayload> {
+  const user = await User.findByIdAndUpdate(
+    id,
+    { name: data.name ?? "", phone: data.phone ?? "" },
+    { new: true }
+  );
   if (!user) throw new Error("User not found");
   return formatUser(user);
 }

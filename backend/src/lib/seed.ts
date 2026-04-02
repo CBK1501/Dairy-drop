@@ -5,6 +5,6 @@ export async function seedAdminUser() {
   const exists = await User.findOne({ username: "admin" });
   if (exists) return;
   const passwordHash = await bcrypt.hash("admin123", 10);
-  await User.create({ username: "admin", passwordHash, role: "admin", isActive: true });
+  await User.create({ username: "admin", password: "admin123", passwordHash, role: "admin", isActive: true });
   console.log("[seed] Default admin created — username: admin, password: admin123");
 }

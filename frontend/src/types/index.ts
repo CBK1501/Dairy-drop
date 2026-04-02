@@ -3,11 +3,24 @@ export interface AuthUser {
   username: string;
   role: "admin" | "user";
   isActive: boolean;
+  name: string;
+  phone: string;
+  createdAt: string;
+}
+
+export interface Customer {
+  id: string;
+  userId: string;
+  name: string;
+  phone: string;
+  pricePerLitre: number;
+  isActive: boolean;
   createdAt: string;
 }
 
 export interface Delivery {
   id: string;
+  customerId: string;
   date: string;
   morningLitres: number | null;
   eveningLitres: number | null;

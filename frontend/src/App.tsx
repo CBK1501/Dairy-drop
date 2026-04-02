@@ -4,9 +4,12 @@ import { AuthProvider, useAuth } from "@/store/auth.store";
 import { Toaster } from "@/components/ui/Toaster";
 import Layout from "@/components/Layout";
 import Login from "@/pages/Login";
-import Dashboard from "@/pages/Dashboard";
+import AdminDashboard from "@/pages/AdminDashboard";
+import UserDashboard from "@/pages/UserDashboard";
+import Customers from "@/pages/Customers";
+import CustomerDetail from "@/pages/CustomerDetail";
 import AddEntry from "@/pages/AddEntry";
-import History from "@/pages/History";
+import HistoryPage from "@/pages/History";
 import Settings from "@/pages/Settings";
 import Admin from "@/pages/Admin";
 
@@ -30,14 +33,18 @@ function Router() {
 
   if (!user) return <Login />;
 
+  const isAdmin = user.role === "admin";
+
   return (
     <Layout>
       <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/add" component={AddEntry} />
-        <Route path="/history" component={History} />
+        <Route path="/" component={isAdmin ? AdminDashboard : UserDashboard} />
+        {!isAdmin && <Route path="/customers" component={Customers} />}
+        {!isAdmin && <Route path="/customers/:id" component={CustomerDetail} />}
+        {!isAdmin && <Route path="/entry" component={AddEntry} />}
+        {!isAdmin && <Route path="/history" component={HistoryPage} />}
         <Route path="/settings" component={Settings} />
-        {user.role === "admin" && <Route path="/admin" component={Admin} />}
+        {isAdmin && <Route path="/admin" component={Admin} />}
         <Route>
           <div className="text-center py-20">
             <h2 className="font-bold text-2xl text-foreground">404 — Page Not Found</h2>
